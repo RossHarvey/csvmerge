@@ -12,7 +12,7 @@ class Transpose
     @uniq_fields = {}
     @field_index = {}
     CSV.open "r/fieldsurvey.csv", "w" do |csv|
-      CSV.open "r/merged_db.csv", "w" do |mcsv|
+        # first scan all the field names in all dbs
         ARGV.each do |file|
           File.open file, READMODE do |f|
             t = [file, *track(file, (CSV.parse f.gets).first)]
@@ -20,20 +20,21 @@ class Transpose
           end
         end
         puts '-' * 80
+        # Now merge
+      CSV.open "r/merged_db.csv",
+               "w",
+               :write_headers => true,
+               :headers       => @field_index.keys do |mcsv|
         ARGV.each do |file|
-          File.open file, READMODE do |f|
-            current_fields = (CSV.parse f.gets).first
-            while s = f.gets
-              puts '+' + s
-              newrecord = []
-              puts CharlockHolmes::EncodingDetector.detect(s)[:encoding]
-              (CSV.parse s).first.each_with_index do |field, index_from|
-                index_to = @field_index[current_fields[index_from]]
-                # binding.pry
-                newrecord[index_to] = field
-              end
-              pp ['@', newrecord]
+          csv = CSV.parse(File.read(file, :encoding => ENCODING), headers: true)
+          # current_fields = (CSV.parse f.gets).first
+          # while s = f.gets
+          csv.each do |row|
+            newrecord = []
+            row.each do |(key, value)|
+              newrecord[@field_index[key]] = value
             end
+            mcsv << newrecord
           end
         end
       end
@@ -46,7 +47,7 @@ class Transpose
     end
   end
 
-  # Compile a list of all fields. Depends on stable hash order.
+  # Compile a unique list of all fields. Depends on stable hash order.
 
   def track file, fields
     fields.each do |seen_yet|
