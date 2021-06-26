@@ -24,14 +24,16 @@ class Transpose
         bytes8bit = IO.binread file
         StringIO.open bytes8bit do |f1|
           File.open IDIR + file, WRITEMODE do |f2|
-            f2.puts trim f1.gets.gsub(' ,', ',')
+            # read CSV header
+            f2.puts trim f1.gets.gsub(' ,', ',').gsub(' phone', ' Phone')
+            # now read the actual records
             while s = f1.gets
               f2.puts trim s
             end
           end
         end
       end
-      # read each file again and build up the overall field list
+      # read each again and build up the overall field list
       ARGV.each do |file|
         File.open IDIR + file, READMODE do |f|
           t = [file, *track(file, (CSV.parse f.gets).first)]
@@ -40,6 +42,7 @@ class Transpose
       end
       puts '-' * 80
       # read each file yet again and merge
+      @harmonized_phones = 0
       CSV.open "r/merged_db.csv",
                "w",
                :write_headers => true,
@@ -50,18 +53,40 @@ class Transpose
           csv.each do |row|
             newrecord = []
             row.each do |(key, value)|
-              newrecord[@field_index[key]] = value if key && value
+              if key && value
+                if key[" Phone"]
+                  original = value
+                  value = value.strip.gsub(/^1? ?\.?\(*(\d\d\d)\)*[- .\/]?(\d\d\d)[- .]?(\d\d\d\d)/, '(\1) \2-\3')
+                                     .gsub(/ ?(, )?(x|ext)[. :]*(\d+) *$/i, ' x\3')
+                                     .gsub(/ x_*$/, '')
+                  report_on_phone value, original
+                  if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
+                    puts "non-conforming phone: >#{value}<" if key[" Phone"]
+                  end
+                end
+                newrecord[@field_index[key]] = value # relocate field
+              end
             end
             mcsv << newrecord
           end
         end
       end
       puts '%d uniq fields' % @uniq_fields.size
+      puts '%d harmonized phone numbers' % @harmonized_phones
       format = "%40s | %-40s"
       puts format % ["<- FIELD -<", ">- FIRST SEEN IN ->"]
 #     [@uniq_fields.keys.to_a, @uniq_fields.values.to_a].transpose.each do |row|
 #       puts(format % row)
 #     end
+    end
+  end
+
+  def report_on_phone value, original
+    if value != original
+      puts
+      puts "was >#{original}<"
+      puts "now #{value}"
+      @harmonized_phones += 1
     end
   end
 
