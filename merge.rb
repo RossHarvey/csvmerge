@@ -56,8 +56,8 @@ class Transpose
               if key && value
                 if key[" Phone"]
                   original = value
-                  value = value.strip.gsub(/^1? ?\.?\(*(\d\d\d)\)*[- .\/]?(\d\d\d)[- .]?(\d\d\d\d)/, '(\1) \2-\3')
-                                     .gsub(/ ?(, )?(x|ext)[. :]*(\d+) *$/i, ' x\3')
+                  value = value.strip.gsub(/^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
+                                     .gsub(/ ? ?(, )?\(?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
                                      .gsub(/ x_*$/, '')
                   report_on_phone value, original
                   if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
