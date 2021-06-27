@@ -22,10 +22,10 @@ class Transpose
         StringIO.open bytes8bit do |f1|
           File.open IDIR + file, WRITEMODE do |f2|
             # read CSV header
-            f2.puts trim f1.gets.gsub(' ,', ',').gsub(' phone', ' Phone')
-            # now read the actual records
+            f2.puts editheader f1.gets.gsub(' ,', ',').gsub(' phone', ' Phone')
+            # this first scan is textual cleanup and not really CSV-aware
             while s = f1.gets
-              f2.puts trim s
+              f2.puts editbody s
             end
           end
         end
@@ -53,7 +53,8 @@ class Transpose
               if key && value
                 if key[" Phone"]
                   original = value
-                  value = value.strip.gsub(/^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
+                  value = value.strip.gsub(
+                    /^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
                                      .gsub(/ ? ?(, )?\(?\/?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
                                      .gsub(/ x_*$/, '')
                   report_on_phone value, original
@@ -84,8 +85,21 @@ class Transpose
     end
   end
 
-  def trim s
-    s.gsub(/[^[:ascii:]]/, '').strip.gsub(/,,*$/,'')
+  def editheader s
+    s.strip.gsub(' ,', ',')
+           .gsub(/,,*$/,'')
+           .gsub(' phone', ' Phone')
+           .gsub('Thereof, or Zip codes',
+                 'Thereof, or ZIP Codes')
+           .gsub('Audited By', 'Audit By')
+           .gsub('Audit Company', 'Audit By')
+    # header fixups aren't just style -- they merge intended-identical columns
+    # this quadratically reduces space--we are over half-way to the google sheets
+    # size limit as it is now
+  end
+
+  def editbody s
+    s.strip.gsub(/[^[:ascii:]]/, '').gsub(/,,*$/,'')
   end
 
   # Compile a unique list of all fields. Depends on stable hash order.
