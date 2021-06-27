@@ -10,15 +10,12 @@ class Transpose
   ENCODING  = 'UTF-8'
 
   def run
-    @uniq_fields = {}
     @field_index = {}
-    # TODO: if the occasional 8-bit chars are not noise,
-    #       further analyze encoding
     CSV.open "r/fieldsurvey.csv", "w" do |survey|
       # read every file in binary mode, filter 8-bit characters,
       # trailing commas, and spaces before commas in headers.
-      # encoding is not UTF-8 but also not an obvious codepage,
-      # leading to core errors when trying to encode as UTF-8
+      # (encoding is not UTF-8 but also not an obvious codepage,
+      # leading to core errors when trying to encode as UTF-8)
       ARGV.each do |file|
         puts file
         bytes8bit = IO.binread file
@@ -57,11 +54,11 @@ class Transpose
                 if key[" Phone"]
                   original = value
                   value = value.strip.gsub(/^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
-                                     .gsub(/ ? ?(, )?\(?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
+                                     .gsub(/ ? ?(, )?\(?\/?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
                                      .gsub(/ x_*$/, '')
                   report_on_phone value, original
                   if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
-                    puts "non-conforming phone: >#{value}<" if key[" Phone"]
+                    puts "in field >#{key}< non-conforming phone: >#{value}<" if key[" Phone"]
                   end
                 end
                 newrecord[@field_index[key]] = value # relocate field
@@ -71,13 +68,10 @@ class Transpose
           end
         end
       end
-      puts '%d uniq fields' % @uniq_fields.size
+      puts '%d fields' % @field_index.size
       puts '%d harmonized phone numbers' % @harmonized_phones
       format = "%40s | %-40s"
-      puts format % ["<- FIELD -<", ">- FIRST SEEN IN ->"]
-#     [@uniq_fields.keys.to_a, @uniq_fields.values.to_a].transpose.each do |row|
-#       puts(format % row)
-#     end
+      # puts format % ["<- FIELD -<", ">- FIRST SEEN IN ->"]
     end
   end
 
@@ -96,19 +90,14 @@ class Transpose
 
   # Compile a unique list of all fields. Depends on stable hash order.
   def track file, fields
-    p '>>>'
-    p file
-    p fields
     fields.each do |hcn| # header column name
       raise if hcn == ''
       if hcn # ,, can produce a nil field
         ocn = @field_index[hcn] # original column name
-        ofn = @uniq_fields[hcn] # original file name
         if ocn
           puts 'In "%s" field "%s" reoccurs' % [file, hcn]
         else
           @field_index[hcn] = @field_index.size
-          @uniq_fields[hcn] = file
           puts 'In "%s" field "%s" originates' % [file, ocn]
         end
       end
