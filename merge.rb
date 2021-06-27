@@ -1,6 +1,8 @@
 require 'rubygems'
 require 'csv'
 
+# FOCUS = /^College/ # for analysis, extract only this field match
+
 class Transpose
 
   READMODE  = 'r:UTF-8'
@@ -51,6 +53,9 @@ class Transpose
             newrecord = []
             row.each do |(key, value)|
               if key && value
+                if defined? FOCUS
+                  next unless FOCUS =~ key
+                end
                 if key[" Phone"]
                   original = value
                   value = value.strip.gsub(
@@ -85,14 +90,20 @@ class Transpose
     end
   end
 
+  AUDIT     = 'Audit By'
+  ADV_EMAIL = 'Classified Adv. Email'
+
   def editheader s
     s.strip.gsub(' ,', ',')
-           .gsub(/,,*$/,'')
+           .gsub(/,,*$/, '')
            .gsub(' phone', ' Phone')
            .gsub('Thereof, or Zip codes',
                  'Thereof, or ZIP Codes')
-           .gsub('Audited By', 'Audit By')
-           .gsub('Audit Company', 'Audit By')
+           .gsub('Audited By', AUDIT)
+           .gsub('Audit Company', AUDIT)
+           .gsub('Classified Adv. e-mail', ADV_EMAIL)
+           .gsub('Classified Advertising e-mail', ADV_EMAIL)
+
     # header fixups aren't just style -- they merge intended-identical columns
     # this quadratically reduces space--we are over half-way to the google sheets
     # size limit as it is now
@@ -106,6 +117,9 @@ class Transpose
   def track file, fields
     fields.each do |hcn| # header column name
       raise if hcn == ''
+      if defined? FOCUS
+        next unless FOCUS =~ hcn
+      end
       if hcn # ,, can produce a nil field
         ocn = @field_index[hcn] # original column name
         if ocn
