@@ -13,6 +13,7 @@ class Transpose
 
   def run
     @field_index = {}
+    @nullrecords = @totalrecords = 0
     CSV.open "r/fieldsurvey.csv", "w" do |survey|
       # read every file in binary mode, filter 8-bit characters,
       # trailing commas, and spaces before commas in headers.
@@ -27,7 +28,13 @@ class Transpose
             f2.puts editheader f1.gets.gsub(' ,', ',').gsub(' phone', ' Phone')
             # this first scan is textual cleanup and not really CSV-aware
             while s = f1.gets
-              f2.puts editbody s
+              r = editbody s
+              if r.size == 0
+                @nullrecords += 1
+              else
+                f2.puts r
+                @totalrecords += 1
+              end
             end
           end
         end
@@ -49,7 +56,9 @@ class Transpose
         ARGV.each do |file|
           puts file
           csv = CSV.parse(File.read(IDIR + file, :encoding => ENCODING), headers: true)
+          ln = 1
           csv.each do |row|
+            ln += 1
             newrecord = []
             row.each do |(key, value)|
               if key && value
@@ -70,13 +79,23 @@ class Transpose
                 newrecord[@field_index[key]] = value # relocate field
               end
             end
-            mcsv << newrecord
+            if newrecord.size == 0
+              if !(defined? FOCUS)
+                STDERR.puts "Input file #{file}"
+                STDERR.puts "Line number #{ln}"
+                raise 'null record??'
+              end
+            else
+              mcsv << newrecord
+            end
           end
         end
       end
-      puts '%d fields' % @field_index.size
-      puts '%d harmonized phone numbers' % @harmonized_phones
-      format = "%40s | %-40s"
+      puts '%5d null records' % @nullrecords
+      puts '%5d fields' % @field_index.size
+      puts '%5d harmonized phone numbers' % @harmonized_phones
+      puts '%5d total records' % @totalrecords
+      # format = "%40s | %-40s"
       # puts format % ["<- FIELD -<", ">- FIRST SEEN IN ->"]
     end
   end
