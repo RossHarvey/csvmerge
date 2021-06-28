@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'csv'
 
-# FOCUS = /^College/ # for analysis, extract only this field match
+FOCUS = /^College/ # for analysis, extract only this field match
 
 class Transpose
 
@@ -13,7 +13,8 @@ class Transpose
 
   def run
     @field_index = {}
-    @nullrecords = @totalrecords = 0
+    # (null) input and output records
+    irs = ors = nirs = nors = 0
     CSV.open "r/fieldsurvey.csv", "w" do |survey|
       # read every file in binary mode, filter 8-bit characters,
       # trailing commas, and spaces before commas in headers.
@@ -28,12 +29,12 @@ class Transpose
             f2.puts editheader f1.gets.gsub(' ,', ',').gsub(' phone', ' Phone')
             # this first scan is textual cleanup and not really CSV-aware
             while s = f1.gets
+              irs += 1
               r = editbody s
               if r.size == 0
-                @nullrecords += 1
+                nirs += 1
               else
                 f2.puts r
-                @totalrecords += 1
               end
             end
           end
@@ -85,16 +86,20 @@ class Transpose
                 STDERR.puts "Line number #{ln}"
                 raise 'null record??'
               end
+              nors += 1
             else
               mcsv << newrecord
+              ors += 1
             end
           end
         end
       end
-      puts '%5d null records' % @nullrecords
+      puts '%5d input records' % irs
+      puts '%5d null input records' % nirs
+      puts '%5d null output records' % nors
+      puts '%5d output records' % ors
       puts '%5d fields' % @field_index.size
       puts '%5d harmonized phone numbers' % @harmonized_phones
-      puts '%5d total records' % @totalrecords
       # format = "%40s | %-40s"
       # puts format % ["<- FIELD -<", ">- FIRST SEEN IN ->"]
     end
