@@ -1,0 +1,11 @@
+#!/bin/sh
+
+hd () {
+  head -1 r/$1.csv | sed -e 's/,/\
+/g' > /tmp/$1
+}
+
+hd ref_merged_db
+hd     merged_db
+
+colordiff -u /tmp/ref_merged_db /tmp/merged_db
