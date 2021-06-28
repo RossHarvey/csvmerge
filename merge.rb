@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'csv'
 
-FOCUS = /^College/ # for analysis, extract only this field match
+#FOCUS = /^Display Adv/ # for analysis, extract only this field match
 
 class Transpose
 
@@ -116,6 +116,7 @@ class Transpose
 
   AUDIT     = 'Audit By'
   ADV_EMAIL = 'Classified Adv. Email'
+  DISPLAY   = 'Display Adv. Email'
 
   def editheader s
     s.strip.gsub(' ,', ',')
@@ -123,10 +124,15 @@ class Transpose
            .gsub(' phone', ' Phone')
            .gsub('Thereof, or Zip codes',
                  'Thereof, or ZIP Codes')
-           .gsub('Audited By', AUDIT)
-           .gsub('Audit Company', AUDIT)
            .gsub('Classified Adv. e-mail', ADV_EMAIL)
            .gsub('Classified Advertising e-mail', ADV_EMAIL)
+           .gsub('Audited By', AUDIT)
+           .gsub('Audit Company', AUDIT)
+           .gsub('Delivery methods', 'Delivery Methods')
+           .gsub('Display Advertising e-mail', DISPLAY)
+           .gsub('Display Adv. E-mail', DISPLAY)
+
+
 
     # header fixups aren't just style -- they merge intended-identical columns
     # this quadratically reduces space--we are over half-way to the google sheets
