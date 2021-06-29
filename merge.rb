@@ -11,10 +11,28 @@ class Transpose
   IDIR      = 'db2/'
   ENCODING  = 'UTF-8'
 
+  DISPLAY   = 'Display Adv. Email'
+  ZIP       = 'Mailing Zip' # or other postal code
+
   RENAME    = {
     'Mailing state'             => 'Mailing State',
     'Mailing state or province' => 'Mailing State',
     'Mailing State/Provience'   => 'Mailing State',
+    'Audited By'                => 'Audit By',
+    'Audit Company'             => 'Audit By',
+    'Classified Adv. e-mail'    => 'Classified Adv. Email',
+    'Classified Advertising e-mail' =>
+                                   'Classified Adv. Email',
+    'Mailing address'           => 'Mailing Address',
+    'Mailing address 1'         => 'Mailing Address 1',
+    'Mailing address 2'         => 'Mailing Address 2',
+    'Mailing city'              => 'Mailing City',
+    'Mailing postal code'       => 'Mailing Postal Code',
+    'Delivery methods'          => 'Delivery Methods',
+    'Display Advertising e-mail'=> 'Display Adv. Email',
+    'Display Adv. E-mail'       => 'Display Adv. Email',
+    'General/National Adv. E-mail' =>
+                                   'General/National Adv. Email',
   }
 
   def run
@@ -109,31 +127,12 @@ class Transpose
     end
   end
 
-  AUDIT     = 'Audit By'
-  ADV_EMAIL = 'Classified Adv. Email'
-  DISPLAY   = 'Display Adv. Email'
-  ZIP       = 'Mailing Zip' # or other postal code
-
   def editheader s
     s.strip.gsub(' ,', ',')
            .gsub(/,,*$/, '')
            .gsub(' phone', ' Phone')
            .gsub('Thereof, or Zip codes',
                  'Thereof, or ZIP Codes')
-           .gsub('Classified Adv. e-mail', ADV_EMAIL)
-           .gsub('Classified Advertising e-mail', ADV_EMAIL)
-           .gsub('Audited By', AUDIT)
-           .gsub('Audit Company', AUDIT)
-           .gsub('Delivery methods', 'Delivery Methods')
-           .gsub('Display Advertising e-mail', DISPLAY)
-           .gsub('Display Adv. E-mail', DISPLAY)
-           .gsub('General/National Adv. E-mail', 'General/National Adv. Email')
-           .gsub('Mailing address', 'Mailing Address')
-           .gsub('Mailing city', 'Mailing City')
-           .gsub('Mailing postal code', 'Mailing Postal Code')
-#          .gsub('Mailing state', 'Mailing State')
-#          .gsub('Mailing state or province', 'Mailing State')
-#          .gsub('Mailing State/Province', 'Mailing State')
 #          .gsub('Mailing ZIP', ZIP)
 #          .gsub('Mailing zip', ZIP)
 #          .gsub('Mailing ZIP Code', ZIP)
