@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'csv'
 
-#FOCUS = /^Display Adv/ # for analysis, extract only this field match
+#FOCUS = /^Mailing.[sS]tate/ # for analysis, extract only this field match
 
 class Transpose
 
@@ -10,6 +10,12 @@ class Transpose
 # WRITEMODE = 'w:windows-1252'
   IDIR      = 'db2/'
   ENCODING  = 'UTF-8'
+
+  RENAME    = {
+    'Mailing state'             => 'Mailing State',
+    'Mailing state or province' => 'Mailing State',
+    'Mailing State/Provience'   => 'Mailing State',
+  }
 
   def run
     @field_index = {}
@@ -57,15 +63,11 @@ class Transpose
         ARGV.each do |file|
           puts file
           csv = CSV.parse(File.read(IDIR + file, :encoding => ENCODING), headers: true)
-          ln = 1
           csv.each do |row|
-            ln += 1
             newrecord = []
             row.each do |(key, value)|
               if key && value
-                if defined? FOCUS
-                  next unless FOCUS =~ key
-                end
+                next if (defined? FOCUS) and not (FOCUS =~ key)
                 if key[" Phone"]
                   original = value
                   value = value.strip.gsub(
@@ -73,19 +75,14 @@ class Transpose
                                      .gsub(/ ? ?(, )?\(?\/?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
                                      .gsub(/ x_*$/, '')
                   report_on_phone value, original
-                  if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
-                    puts "in field >#{key}< non-conforming phone: >#{value}<" if key[" Phone"]
-                  end
+#                 if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
+#                   puts "in field >#{key}< non-conforming phone: >#{value}<" if key[" Phone"]
+#                 end
                 end
-                newrecord[@field_index[key]] = value # relocate field
+                newrecord[@field_index[RENAME[key] || key]] = value # relocate field
               end
             end
             if newrecord.size == 0
-              if !(defined? FOCUS)
-                STDERR.puts "Input file #{file}"
-                STDERR.puts "Line number #{ln}"
-                raise 'null record??'
-              end
               nors += 1
             else
               mcsv << newrecord
@@ -100,16 +97,14 @@ class Transpose
       puts '%5d output records' % ors
       puts '%5d fields' % @field_index.size
       puts '%5d harmonized phone numbers' % @harmonized_phones
-      # format = "%40s | %-40s"
-      # puts format % ["<- FIELD -<", ">- FIRST SEEN IN ->"]
     end
   end
 
   def report_on_phone value, original
     if value != original
-      puts
-      puts "was >#{original}<"
-      puts "now #{value}"
+      # puts
+      # puts "was >#{original}<"
+      # puts "now #{value}"
       @harmonized_phones += 1
     end
   end
@@ -117,6 +112,7 @@ class Transpose
   AUDIT     = 'Audit By'
   ADV_EMAIL = 'Classified Adv. Email'
   DISPLAY   = 'Display Adv. Email'
+  ZIP       = 'Mailing Zip' # or other postal code
 
   def editheader s
     s.strip.gsub(' ,', ',')
@@ -131,7 +127,18 @@ class Transpose
            .gsub('Delivery methods', 'Delivery Methods')
            .gsub('Display Advertising e-mail', DISPLAY)
            .gsub('Display Adv. E-mail', DISPLAY)
-
+           .gsub('General/National Adv. E-mail', 'General/National Adv. Email')
+           .gsub('Mailing address', 'Mailing Address')
+           .gsub('Mailing city', 'Mailing City')
+           .gsub('Mailing postal code', 'Mailing Postal Code')
+#          .gsub('Mailing state', 'Mailing State')
+#          .gsub('Mailing state or province', 'Mailing State')
+#          .gsub('Mailing State/Province', 'Mailing State')
+#          .gsub('Mailing ZIP', ZIP)
+#          .gsub('Mailing zip', ZIP)
+#          .gsub('Mailing ZIP Code', ZIP)
+#          .gsub('Mailing Zip Code', ZIP)
+#          .gsub('Mailing ZIP/Postal', ZIP)
 
 
     # header fixups aren't just style -- they merge intended-identical columns
@@ -145,18 +152,15 @@ class Transpose
 
   # Compile a unique list of all fields. Depends on stable hash order.
   def track file, fields
-    fields.each do |hcn| # header column name
-      raise if hcn == ''
+    fields.each do |hcname| # header column name
+      raise if hcname == ''
       if defined? FOCUS
-        next unless FOCUS =~ hcn
+        next unless FOCUS =~ hcname
       end
-      if hcn # ,, can produce a nil field
-        ocn = @field_index[hcn] # original column name
-        if ocn
-          puts 'In "%s" field "%s" reoccurs' % [file, hcn]
-        else
-          @field_index[hcn] = @field_index.size
-          puts 'In "%s" field "%s" originates' % [file, ocn]
+      if hcname # ,, can produce a nil field
+        s = RENAME[hcname] || hcname
+        if !@field_index[s]
+          @field_index[s] = @field_index.size
         end
       end
     end
