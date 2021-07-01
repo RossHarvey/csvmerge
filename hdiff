@@ -8,4 +8,5 @@ hd () {
 hd ref_merged_db
 hd     merged_db
 
+set -v
 colordiff -u /tmp/ref_merged_db /tmp/merged_db
