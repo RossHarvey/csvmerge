@@ -11,9 +11,6 @@ class Transpose
   IDIR      = 'db2/'
   ENCODING  = 'UTF-8'
 
-  DISPLAY   = 'Display Adv. Email'
-  ZIP       = 'Mailing Zip' # or other postal code
-
   RENAME    = {
     'Mailing state'             => 'Mailing State',
     'Mailing state or province' => 'Mailing State',
@@ -37,6 +34,8 @@ class Transpose
     "Editorial phone"           => "Editorial Phone",
     "Office phone"              => "Office Phone",
     "Other phone"               => "Other Phone",
+    "Areas Served - City/County or Portion Thereof, or Zip codes" =>
+    "Areas Served - City/County or Portion Thereof, or ZIP Codes",
 
   }
 
@@ -136,8 +135,6 @@ class Transpose
   def editheader s
     s.strip.gsub(' ,', ',')
            .gsub(/,,*$/, '')
-           .gsub('Thereof, or Zip codes',
-                 'Thereof, or ZIP Codes')
 #          .gsub('Mailing ZIP', ZIP)
 #          .gsub('Mailing zip', ZIP)
 #          .gsub('Mailing ZIP Code', ZIP)
