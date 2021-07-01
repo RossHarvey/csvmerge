@@ -33,6 +33,11 @@ class Transpose
     'Display Adv. E-mail'       => 'Display Adv. Email',
     'General/National Adv. E-mail' =>
                                    'General/National Adv. Email',
+    "Advertising phone"         => "Advertising Phone",
+    "Editorial phone"           => "Editorial Phone",
+    "Office phone"              => "Office Phone",
+    "Other phone"               => "Other Phone",
+
   }
 
   def run
@@ -50,7 +55,7 @@ class Transpose
         StringIO.open bytes8bit do |f1|
           File.open IDIR + file, WRITEMODE do |f2|
             # read CSV header
-            f2.puts editheader f1.gets.gsub(' ,', ',').gsub(' phone', ' Phone')
+            f2.puts editheader f1.gets.gsub(' ,', ',')
             # this first scan is textual cleanup and not really CSV-aware
             while s = f1.gets
               irs += 1
@@ -72,6 +77,7 @@ class Transpose
         end
       end
       puts '-' * 80
+      IO.write "r/headers", (@field_index.keys.join "\n")
       # read each file yet again and merge
       @harmonized_phones = 0
       CSV.open "r/merged_db.csv",
@@ -86,7 +92,7 @@ class Transpose
             row.each do |(key, value)|
               if key && value
                 next if (defined? FOCUS) and not (FOCUS =~ key)
-                if key[" Phone"]
+                if key[/ [pP]hone/]
                   original = value
                   value = value.strip.gsub(
                     /^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
@@ -130,7 +136,6 @@ class Transpose
   def editheader s
     s.strip.gsub(' ,', ',')
            .gsub(/,,*$/, '')
-           .gsub(' phone', ' Phone')
            .gsub('Thereof, or Zip codes',
                  'Thereof, or ZIP Codes')
 #          .gsub('Mailing ZIP', ZIP)
