@@ -36,7 +36,20 @@ class Transpose
     "Other phone"               => "Other Phone",
     "Areas Served - City/County or Portion Thereof, or Zip codes" =>
     "Areas Served - City/County or Portion Thereof, or ZIP Codes",
+=begin
+    "Mailing ZIP Code"          => "Mailing ZIP",
+    "Mailing ZIP/Postal"        => "Mailing ZIP",
+    "Mailing Zip Code"          => "Mailing ZIP",
+    "Mailing zip"               => "Mailing ZIP",
+    "Street Zip Code"           => "Street ZIP Code",
+    "ZIP/Postal Code"           => "ZIP Code",
+    "Zip/Postal code"           => "ZIP Code",
+    "Zip Codes Served"          => "ZIP Codes Served",
+=end
+  }
 
+  GLOBAL_REMOVE = {
+    "If other, please specify:" => true,
   }
 
   def run
@@ -68,8 +81,10 @@ class Transpose
           end
         end
       end
-      # read each again and build up the overall field list
+      # read again, but just the headers, and build up the overall field list
+      puts '=' * 80
       ARGV.each do |file|
+        puts file
         File.open IDIR + file, READMODE do |f|
           t = [file, *track(file, (CSV.parse f.gets).first)]
           survey << t
@@ -77,7 +92,7 @@ class Transpose
       end
       puts '-' * 80
       IO.write "r/headers", (@field_index.keys.join "\n")
-      # read each file yet again and merge
+      # read and merge
       @harmonized_phones = 0
       CSV.open "r/merged_db.csv",
                "w",
@@ -91,6 +106,7 @@ class Transpose
             row.each do |(key, value)|
               if key && value
                 next if (defined? FOCUS) and not (FOCUS =~ key)
+                next if GLOBAL_REMOVE[key]
                 if key[/ [pP]hone/]
                   original = value
                   value = value.strip.gsub(
@@ -102,7 +118,22 @@ class Transpose
 #                   puts "in field >#{key}< non-conforming phone: >#{value}<" if key[" Phone"]
 #                 end
                 end
-                newrecord[@field_index[RENAME[key] || key]] = value # relocate field
+                idx = @field_index[RENAME[key] || key]
+                if !idx
+                  puts "#{RENAME[key]}, #{key}"
+                  pp @field_index
+                  raise "Column name not found"
+                end
+                if newrecord[idx]
+                  # this can happen with duplicate fields, usually something
+                  # like: mail street, city, state, office street, city, state
+                  puts "Overwrite of #{key}/#{RENAME[key] || '--'} at #{idx}"
+                  puts "Originally #{newrecord[idx]}"
+                  puts "Now        #{value}"
+                  pp newrecord
+                  raise if newrecord[idx] != value
+                end
+                newrecord[idx] = value # relocate field
               end
             end
             if newrecord.size == 0
@@ -153,6 +184,18 @@ class Transpose
 
   # Compile a unique list of all fields. Depends on stable hash order.
   def track file, fields
+    dups = {}; havedups = nil
+    fields.each_with_index do |hcname, i|
+      next if GLOBAL_REMOVE[hcname]
+      raise "column #{i} zero-length string" if hcname == ''
+      raise "column #{i} nil" if hcname.nil?
+      if dups[hcname]
+        puts "#{hcname} is duplicated in columns #{dups[hcname]} and #{i}"
+        havedups = true
+      end
+      dups[hcname] = i
+    end
+    raise if havedups
     fields.each do |hcname| # header column name
       raise if hcname == ''
       if defined? FOCUS
@@ -160,7 +203,7 @@ class Transpose
       end
       if hcname # ,, can produce a nil field
         s = RENAME[hcname] || hcname
-        if !@field_index[s]
+        if !@field_index[s] && !GLOBAL_REMOVE[s]
           @field_index[s] = @field_index.size
         end
       end
