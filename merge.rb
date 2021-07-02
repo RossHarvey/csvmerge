@@ -54,103 +54,118 @@ class Transpose
 
   def run
     @field_index = {}
-    # (null) input and output records
-    irs = ors = nirs = nors = 0
-    CSV.open "r/fieldsurvey.csv", "w" do |survey|
-      # read every file in binary mode, filter 8-bit characters,
-      # trailing commas, and spaces before commas in headers.
-      # (encoding is not UTF-8 but also not an obvious codepage,
-      # leading to core errors when trying to encode as UTF-8)
-      ARGV.each do |file|
-        puts file
-        bytes8bit = IO.binread file
-        StringIO.open bytes8bit do |f1|
-          File.open IDIR + file, WRITEMODE do |f2|
-            # read CSV header
-            f2.puts editheader f1.gets.gsub(' ,', ',')
-            # this first scan is textual cleanup and not really CSV-aware
-            while s = f1.gets
-              irs += 1
-              r = editbody s
-              if r.size == 0
-                nirs += 1
-              else
-                f2.puts r
-              end
-            end
-          end
-        end
-      end
-      # read again, but just the headers, and build up the overall field list
-      puts '=' * 80
-      ARGV.each do |file|
-        puts file
-        File.open IDIR + file, READMODE do |f|
-          t = [file, *track(file, (CSV.parse f.gets).first)]
-          survey << t
-        end
-      end
-      puts '-' * 80
-      IO.write "r/headers", (@field_index.keys.join "\n")
-      # read and merge
-      @harmonized_phones = 0
-      CSV.open "r/merged_db.csv",
-               "w",
-               :write_headers => true,
-               :headers       => @field_index.keys do |mcsv|
-        ARGV.each do |file|
-          puts file
-          csv = CSV.parse(File.read(IDIR + file, :encoding => ENCODING), headers: true)
-          csv.each do |row|
-            newrecord = []
-            row.each do |(key, value)|
-              if key && value
-                next if (defined? FOCUS) and not (FOCUS =~ key)
-                next if GLOBAL_REMOVE[key]
-                if key[/ [pP]hone/]
-                  original = value
-                  value = value.strip.gsub(
-                    /^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
-                                     .gsub(/ ? ?(, )?\(?\/?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
-                                     .gsub(/ x_*$/, '')
-                  report_on_phone value, original
-#                 if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
-#                   puts "in field >#{key}< non-conforming phone: >#{value}<" if key[" Phone"]
-#                 end
-                end
-                idx = @field_index[RENAME[key] || key]
-                if !idx
-                  puts "#{RENAME[key]}, #{key}"
-                  pp @field_index
-                  raise "Column name not found"
-                end
-                if newrecord[idx]
-                  # this can happen with duplicate fields, usually something
-                  # like: mail street, city, state, office street, city, state
-                  puts "Overwrite of #{key}/#{RENAME[key] || '--'} at #{idx}"
-                  puts "Originally #{newrecord[idx]}"
-                  puts "Now        #{value}"
-                  pp newrecord
-                  raise if newrecord[idx] != value
-                end
-                newrecord[idx] = value # relocate field
-              end
-            end
-            if newrecord.size == 0
-              nors += 1
+    @irs = @ors = @nirs = @nors = 0 # (null) input and output records
+
+    pass1
+    pass2
+    pass3
+
+    printstats
+  end
+
+  def pass1
+    # read every file in binary mode, filter 8-bit characters,
+    # trailing commas, and spaces before commas in headers.
+    ARGV.each do |file|
+      puts file
+      bytes8bit = IO.binread file
+      StringIO.open bytes8bit do |f1|
+        File.open IDIR + file, WRITEMODE do |f2|
+          # read CSV header
+          f2.puts editheader f1.gets.gsub(' ,', ',')
+          # this first scan is textual cleanup and not really CSV-aware
+          while s = f1.gets
+            @irs += 1
+            r = editbody s
+            if r.size == 0
+              @nirs += 1
             else
-              mcsv << newrecord
-              ors += 1
+              f2.puts r
             end
           end
         end
       end
-      puts '%5d input records' % irs
-      puts '%5d null input records' % nirs
-      puts '%5d null output records' % nors
-      puts '%5d output records' % ors
-      puts '%5d fields' % @field_index.size
-      puts '%5d harmonized phone numbers' % @harmonized_phones
+    end
+  end
+
+  def pass2
+    # read again, but just the headers, and build up the overall field list
+    puts '=' * 80
+    ARGV.each do |file|
+      puts file
+      File.open IDIR + file, READMODE do |f|
+        track file, (CSV.parse f.gets).first
+      end
+    end
+    puts '-' * 80
+    IO.write "r/headers", (@field_index.keys.join "\n")
+  end
+
+  def pass3
+    # read and merge
+    @harmonized_phones = 0
+    CSV.open "r/merged_db.csv",
+             "w",
+             :write_headers => true,
+             :headers       => @field_index.keys do |mcsv|
+      ARGV.each do |file|
+        puts file
+        csv = CSV.parse(File.read(IDIR + file, :encoding => ENCODING), headers: true)
+        csv.each do |row|
+          newrecord = []
+          row.each do |(key, value)|
+            next unless key && value
+            next if (defined? FOCUS) and not (FOCUS =~ key)
+            next if GLOBAL_REMOVE[key]
+            format_phone_field key, value
+            idx = @field_index[RENAME[key] || key]
+            raise "#{key} not found #{@field_index}" unless idx
+            check_overwrite key, newrecord, idx, value
+            newrecord[idx] = value # relocate field
+          end
+          if newrecord.size == 0
+            @nors += 1
+          else
+            mcsv << newrecord
+            @ors += 1
+          end
+        end
+      end
+    end
+  end
+
+  def printstats
+    puts '%5d input records' % @irs
+    puts '%5d null input records' % @nirs
+    puts '%5d null output records' % @nors
+    puts '%5d output records' % @ors
+    puts '%5d fields' % @field_index.size
+    puts '%5d harmonized phone numbers' % @harmonized_phones
+  end
+
+  def format_phone_field key, value
+    if key[/ [pP]hone/]
+      original = value
+      value.replace value.strip.gsub(
+        /^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
+                               .gsub(/ ? ?(, )?\(?\/?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
+                               .gsub(/ x_*$/, '')
+      report_on_phone value, original
+  #   if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
+  #     puts "in field >#{key}< non-conforming phone: >#{value}<" if key[" Phone"]
+  #   end
+    end
+  end
+
+  def check_overwrite key, newrecord, idx, value
+    if newrecord[idx]
+      # this can happen with duplicate fields, usually something
+      # like: mail street, city, state, office street, city, state
+      puts "Overwrite of #{key}/#{RENAME[key] || '--'} at #{idx}"
+      puts "Originally #{newrecord[idx]}"
+      puts "Now        #{value}"
+      pp newrecord
+      raise if newrecord[idx] != value
     end
   end
 
@@ -171,11 +186,6 @@ class Transpose
 #          .gsub('Mailing ZIP Code', ZIP)
 #          .gsub('Mailing Zip Code', ZIP)
 #          .gsub('Mailing ZIP/Postal', ZIP)
-
-
-    # header fixups aren't just style -- they merge intended-identical columns
-    # this quadratically reduces space--we are over half-way to the google sheets
-    # size limit as it is now
   end
 
   def editbody s
@@ -208,7 +218,6 @@ class Transpose
         end
       end
     end
-    fields
   end
 
   self
