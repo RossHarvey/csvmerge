@@ -35,6 +35,7 @@ class Transpose
     "Other phone"               => "Other Phone",
     "Areas Served - City/County or Portion Thereof, or Zip codes" =>
     "Areas Served - City/County or Portion Thereof, or ZIP Codes",
+    "Provience"                 => "Province",
 =begin
     "Mailing ZIP Code"          => "Mailing ZIP",
     "Mailing ZIP/Postal"        => "Mailing ZIP",
@@ -144,7 +145,7 @@ class Transpose
   end
 
   def format_phone_field key, value
-    if key[/ [pP]hone/]
+    if key[/ [pP]hone$|[fF]ax$/]
       original = value.clone
       value.replace value.strip.gsub(
         /^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
