@@ -7,7 +7,6 @@ class Transpose
 
   READMODE  = 'r:UTF-8'
   WRITEMODE = 'w:UTF-8'
-# WRITEMODE = 'w:windows-1252'
   IDIR      = 'db2/'
   ENCODING  = 'UTF-8'
 
@@ -54,7 +53,7 @@ class Transpose
 
   def run
     @field_index = {}
-    @irs = @ors = @nirs = @nors = 0 # (null) input and output records
+    @nonco = @irs = @ors = @nirs = @nors = 0 # (null) input and output records
 
     pass1
     pass2
@@ -141,19 +140,21 @@ class Transpose
     puts '%5d output records' % @ors
     puts '%5d fields' % @field_index.size
     puts '%5d harmonized phone numbers' % @harmonized_phones
+    puts '%5d non-conforming numbers remain' % @nonco
   end
 
   def format_phone_field key, value
     if key[/ [pP]hone/]
-      original = value
+      original = value.clone
       value.replace value.strip.gsub(
         /^1?[ -]?\.?\(*(\d\d\d) ?\)*[- .\/]*(\d\d\d)[- .]*(\d\d\d\d)/, '(\1) \2-\3')
                                .gsub(/ ? ?(, )?\(?\/?(x|ext)[-. :]*(\d+)[ )]*$/i, ' x\3')
                                .gsub(/ x_*$/, '')
       report_on_phone value, original
-  #   if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
+      if !value[/^\(\d\d\d\) \d\d\d-\d\d\d\d( x\d+)?$/]
+        @nonco += 1
   #     puts "in field >#{key}< non-conforming phone: >#{value}<" if key[" Phone"]
-  #   end
+      end
     end
   end
 
