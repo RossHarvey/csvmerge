@@ -1,5 +1,11 @@
+#!/usr/bin/env ruby
+
 require 'rubygems'
 require 'csv'
+
+# Splits the DB into columns, each column in a separate file...
+# The normal next step is:
+#   $ colordiff -u -r refcols/ cols/
 
 class Split
 
