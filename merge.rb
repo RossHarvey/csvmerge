@@ -36,6 +36,10 @@ class Transpose
     "Areas Served - City/County or Portion Thereof, or Zip codes" =>
     "Areas Served - City/County or Portion Thereof, or ZIP Codes",
     "Provience"                 => "Province",
+    "Company name"              => "Company Name",
+    "Main (survey) contact"     => "Main Contact",
+    "Main Contatct"             => "Main Contact",
+    "State/Province"            => "State",
 =begin
     "Mailing ZIP Code"          => "Mailing ZIP",
     "Mailing ZIP/Postal"        => "Mailing ZIP",
@@ -53,7 +57,9 @@ class Transpose
   }
 
   def run
-    @field_index = {}
+
+    @field_index = {} # the accumulated final fields
+    @null_type = {} # track component db's with a null type field
     @nonco = @irs = @ors = @nirs = @nors = 0 # (null) input and output records
 
     pass1
@@ -61,6 +67,7 @@ class Transpose
     pass3
 
     printstats
+
   end
 
   def pass1
@@ -113,6 +120,7 @@ class Transpose
         csv = CSV.parse(File.read(IDIR + file, :encoding => ENCODING), headers: true)
         csv.each do |row|
           newrecord = []
+          check_null_type file, row
           row.each do |(key, value)|
             next unless key && value
             next if (defined? FOCUS) and not (FOCUS =~ key)
@@ -142,6 +150,18 @@ class Transpose
     puts '%5d fields' % @field_index.size
     puts '%5d harmonized phone numbers' % @harmonized_phones
     puts '%5d non-conforming numbers remain' % @nonco
+  end
+
+  def check_null_type file, row
+    if row[0].nil? || row[0].empty?
+      if !@null_type[file]
+        puts
+        puts '###################################'
+        puts "\"#{file}\" is missing a type field"
+        puts
+        @null_type[file] = true
+      end
+    end
   end
 
   def format_phone_field key, value
