@@ -9,6 +9,7 @@ class Transpose
   WRITEMODE = 'w:UTF-8'
   IDIR      = 'db2/'
   ENCODING  = 'UTF-8'
+  SUBSET    = false
 
   RENAME    = {
     'Mailing state'             => 'Mailing State',
@@ -40,6 +41,8 @@ class Transpose
     "Main (survey) contact"     => "Main Contact",
     "Main Contatct"             => "Main Contact",
     "State/Province"            => "State",
+    "Master"                    => "Master Category",
+    "Types"                     => "Type",
 =begin
     "Mailing ZIP Code"          => "Mailing ZIP",
     "Mailing ZIP/Postal"        => "Mailing ZIP",
@@ -55,6 +58,25 @@ class Transpose
   GLOBAL_REMOVE = {
     "If other, please specify:" => true,
   }
+
+  CELL_UPDATES = [
+    [ "Master Category",
+        "Services,Newspaper Comic Section Groupsand Networks",
+        "Newspaper Comic Section Groups and Networks" ],
+    [ "Type",
+        "Newspaper",
+        "Newspapers"],
+  ]
+
+  def update_cells newrecord, mergedkey, idx, value
+    CELL_UPDATES.each do |u|
+      if mergedkey == u[0] && value == u[1]
+        puts "U" * 80
+        pp u
+        newrecord[idx] = u[2]
+      end
+    end
+  end
 
   def run
 
@@ -119,6 +141,7 @@ class Transpose
         puts file
         csv = CSV.parse(File.read(IDIR + file, :encoding => ENCODING), headers: true)
         csv.each do |row|
+          next unless row.any? # filter out ,,,,, lines (no stat atm)
           newrecord = []
           check_null_type file, row
           row.each do |(key, value)|
@@ -126,15 +149,17 @@ class Transpose
             next if (defined? FOCUS) and not (FOCUS =~ key)
             next if GLOBAL_REMOVE[key]
             format_phone_field key, value
-            idx = @field_index[RENAME[key] || key]
+            mergedkey = RENAME[key] || key
+            idx = @field_index[mergedkey]
             raise "#{key} not found #{@field_index}" unless idx
             check_overwrite key, newrecord, idx, value
             newrecord[idx] = value # relocate field
+            update_cells newrecord, mergedkey, idx, value
           end
           if newrecord.size == 0
             @nors += 1
           else
-            mcsv << newrecord
+            mcsv << (SUBSET ? newrecord[0..2] + [file] : newrecord)
             @ors += 1
           end
         end
@@ -152,11 +177,31 @@ class Transpose
     puts '%5d non-conforming numbers remain' % @nonco
   end
 
+=begin
+  def try_2_fix_first_two_cols file, row
+    if row[1].nil? || row[1].empty?
+      if file
+    if row[0].nil? || row[0].empty?
+      if row[1] == "Equipment, Supply and Service Companies"
+        row[0] = "Services"
+        return
+      end
+=end
+
   def check_null_type file, row
+    unless "dborig/" + (row[1] || "")  + ".csv" == file
+      unless file == "dborig/News, Picture and Syndicate Services.csv"
+        puts 'm' * 80
+        puts row[1]
+        puts file
+        puts 'Master Category unexpected'
+        # raise
+      end
+    end
     if row[0].nil? || row[0].empty?
       if !@null_type[file]
         puts
-        puts '###################################'
+        puts '#' * 80
         puts "\"#{file}\" is missing a type field"
         puts
         @null_type[file] = true
