@@ -55,28 +55,25 @@ class Transpose
 =end
   }
 
+# formerly in editheader
+#          .gsub('Mailing ZIP', ZIP)
+#          .gsub('Mailing zip', ZIP)
+#          .gsub('Mailing ZIP Code', ZIP)
+#          .gsub('Mailing Zip Code', ZIP)
+#          .gsub('Mailing ZIP/Postal', ZIP)
+
   GLOBAL_REMOVE = {
     "If other, please specify:" => true,
   }
 
   CELL_UPDATES = [
     [ "Master Category",
-        "Services,Newspaper Comic Section Groupsand Networks",
+        "Newspaper Comic Section Groupsand Networks",
         "Newspaper Comic Section Groups and Networks" ],
     [ "Type",
         "Newspaper",
         "Newspapers"],
   ]
-
-  def update_cells newrecord, mergedkey, idx, value
-    CELL_UPDATES.each do |u|
-      if mergedkey == u[0] && value == u[1]
-        puts "U" * 80
-        pp u
-        newrecord[idx] = u[2]
-      end
-    end
-  end
 
   def run
 
@@ -189,15 +186,15 @@ class Transpose
 =end
 
   def check_null_type file, row
-    unless "dborig/" + (row[1] || "")  + ".csv" == file
-      unless file == "dborig/News, Picture and Syndicate Services.csv"
-        puts 'm' * 80
-        puts row[1]
-        puts file
-        puts 'Master Category unexpected'
-        # raise
-      end
-    end
+#   unless "dborig/" + (row[1] || "")  + ".csv" == file
+#     unless file == "dborig/News, Picture and Syndicate Services.csv"
+#       puts 'm' * 80
+#       puts row[1]
+#       puts file
+#       puts 'Master Category unexpected'
+#       # raise
+#     end
+#   end
     if row[0].nil? || row[0].empty?
       if !@null_type[file]
         puts
@@ -205,6 +202,14 @@ class Transpose
         puts "\"#{file}\" is missing a type field"
         puts
         @null_type[file] = true
+      end
+    end
+  end
+
+  def update_cells newrecord, mergedkey, idx, value
+    CELL_UPDATES.each do |u|
+      if mergedkey == u[0] && value == u[1]
+        newrecord[idx] = u[2]
       end
     end
   end
@@ -248,11 +253,6 @@ class Transpose
   def editheader s
     s.strip.gsub(' ,', ',')
            .gsub(/,,*$/, '')
-#          .gsub('Mailing ZIP', ZIP)
-#          .gsub('Mailing zip', ZIP)
-#          .gsub('Mailing ZIP Code', ZIP)
-#          .gsub('Mailing Zip Code', ZIP)
-#          .gsub('Mailing ZIP/Postal', ZIP)
   end
 
   def editbody s
