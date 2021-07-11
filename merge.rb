@@ -10,6 +10,7 @@ class Transpose
   IDIR      = 'db2/'
   ENCODING  = 'UTF-8'
   SUBSET    = false
+  EN_DASH   = 0x96
 
   RENAME    = {
     'Mailing state'             => 'Mailing State',
@@ -78,12 +79,12 @@ class Transpose
   def run
 
     @field_index = {} # the accumulated final fields
-    @null_type = {} # track component db's with a null type field
-    @nonco = @irs = @ors = @nirs = @nors = 0 # (null) input and output records
+    @null_type_warning = {} # track component db's with a null type field
+    @endash = @nonco = @irs = @ors = @nirs = @nors = 0 # (null) input and output records
 
-    pass1
-    pass2
-    pass3
+    pass1 # dborig/*.csv -> db2/. Textual fixups, all files rewritten to db2
+    pass2 # only headers read from db2 -- column merges and name fixups
+    pass3 # read all db2 CSVs and merge into one file
 
     printstats
 
@@ -172,6 +173,7 @@ class Transpose
     puts '%5d fields' % @field_index.size
     puts '%5d harmonized phone numbers' % @harmonized_phones
     puts '%5d non-conforming numbers remain' % @nonco
+    puts '%5d en-dash glyphs converted' % @endash
   end
 
 =begin
@@ -196,12 +198,12 @@ class Transpose
 #     end
 #   end
     if row[0].nil? || row[0].empty?
-      if !@null_type[file]
+      if !@null_type_warning[file]
         puts
         puts '#' * 80
         puts "\"#{file}\" is missing a type field"
         puts
-        @null_type[file] = true
+        @null_type_warning[file] = true
       end
     end
   end
@@ -256,7 +258,29 @@ class Transpose
   end
 
   def editbody s
-    s.strip.gsub(/[^[:ascii:]]/, '').gsub(/,,*$/,'')
+    r = s.strip.gsub(/,,*$/,'')
+               .tr("\xA0".b, " ".b)
+
+    while true
+      i = r.index EN_DASH.chr
+      break if i.nil?
+      b = r.bytes
+      i = b.index EN_DASH
+      raise if i.nil?
+      if i > 0 &&
+        ('0'.ord..'9'.ord) === b[i - 1] &&
+        ('0'.ord..'9'.ord) === b[i + 1] # then
+        b[i] = '-'.ord
+        puts r
+        puts(b.pack 'C*')
+        @endash += 1
+      else
+        b.delete_at i
+      end
+      r = b.pack 'C*'
+    end
+
+    r.gsub(/[^[:ascii:]]/, '')
   end
 
   # Compile a unique list of all fields. Depends on stable hash order.
