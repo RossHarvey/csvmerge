@@ -44,6 +44,7 @@ class Transpose
     "State/Province"            => "State",
     "Master"                    => "Master Category",
     "Types"                     => "Type",
+
 =begin
     "Mailing ZIP Code"          => "Mailing ZIP",
     "Mailing ZIP/Postal"        => "Mailing ZIP",
@@ -286,11 +287,13 @@ class Transpose
     r.gsub(/[^[:ascii:]]/, '')
   end
 
-  # Compile a unique list of all fields. Depends on stable hash order.
+  # Merge this CSV file's fields to the master list.
+
   def track file, fields
     dups = {}; havedups = nil
     fields.each_with_index do |hcname, i|
       next if GLOBAL_REMOVE[hcname]
+      # apply various sanity checks
       raise "column #{i} zero-length string" if hcname == ''
       raise "column #{i} nil" if hcname.nil?
       if dups[hcname]
@@ -300,6 +303,8 @@ class Transpose
       dups[hcname] = i
     end
     raise if havedups
+    # now, add to the master list if not already there
+    # must be RENAME{}-concious
     fields.each do |hcname| # header column name
       raise if hcname == ''
       if defined? FOCUS
