@@ -80,6 +80,7 @@ class Transpose
 
     @field_index = {} # the accumulated final fields
     @null_type_warning = {} # track component db's with a null type field
+    @tpatch = @mcpatch = @cellmerge =
     @endash = @nonco = @irs = @ors = @nirs = @nors = 0 # (null) input and output records
 
     pass1 # dborig/*.csv -> db2/. Textual fixups, all files rewritten to db2
@@ -116,20 +117,18 @@ class Transpose
   end
 
   def pass2
-    # read again, but just the headers, and build up the overall field list
-    puts '=' * 80
+    puts '=' * 80 # read again, but just the headers, and build up the overall field list
     ARGV.each do |file|
       puts file
       File.open IDIR + file, READMODE do |f|
         track file, (CSV.parse f.gets).first
       end
     end
-    puts '-' * 80
     IO.write "r/headers", (@field_index.keys.join "\n")
   end
 
   def pass3
-    # read and merge
+    puts '-' * 80 # read and merge
     @harmonized_phones = 0
     CSV.open "r/merged_db.csv",
              "w",
@@ -141,12 +140,13 @@ class Transpose
         csv.each do |row|
           next unless row.any? # filter out ,,,,, lines (no stat atm)
           newrecord = []
-          check_null_type file, row
+#         check_null_type file, row
           row.each do |(key, value)|
             next unless key && value
             next if (defined? FOCUS) and not (FOCUS =~ key)
             next if GLOBAL_REMOVE[key]
             format_phone_field key, value
+            @cellmerge += 1 if RENAME[key]
             mergedkey = RENAME[key] || key
             idx = @field_index[mergedkey]
             raise "#{key} not found #{@field_index}" unless idx
@@ -157,6 +157,7 @@ class Transpose
           if newrecord.size == 0
             @nors += 1
           else
+            try_first_cols_fix file, row, newrecord
             mcsv << (SUBSET ? newrecord[0..2] + [file] : newrecord)
             @ors += 1
           end
@@ -174,18 +175,23 @@ class Transpose
     puts '%5d harmonized phone numbers' % @harmonized_phones
     puts '%5d non-conforming numbers remain' % @nonco
     puts '%5d en-dash glyphs converted' % @endash
+    puts '%5d Type fields patched' % @tpatch
+    puts '%5d Master Category fields patched' % @mcpatch
+    puts '%5d Cells merged from %d redundant columns' % [@cellmerge, RENAME.size]
   end
 
-=begin
-  def try_2_fix_first_two_cols file, row
+  def try_first_cols_fix file, catrow, row
     if row[1].nil? || row[1].empty?
-      if file
+      row[1] = File.basename file, '.csv'
+      @mcpatch += 1
+    end
     if row[0].nil? || row[0].empty?
       if row[1] == "Equipment, Supply and Service Companies"
         row[0] = "Services"
-        return
+        @tpatch += 1
       end
-=end
+    end
+  end
 
   def check_null_type file, row
 #   unless "dborig/" + (row[1] || "")  + ".csv" == file
@@ -258,8 +264,7 @@ class Transpose
   end
 
   def editbody s
-    r = s.strip.gsub(/,,*$/,'')
-               .tr("\xA0".b, " ".b)
+    r = s.strip.gsub(/,,*$/,'').tr("\xA0".b, " ".b)
 
     while true
       i = r.index EN_DASH.chr
@@ -271,8 +276,6 @@ class Transpose
         ('0'.ord..'9'.ord) === b[i - 1] &&
         ('0'.ord..'9'.ord) === b[i + 1] # then
         b[i] = '-'.ord
-        puts r
-        puts(b.pack 'C*')
         @endash += 1
       else
         b.delete_at i
