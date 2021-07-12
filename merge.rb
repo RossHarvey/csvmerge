@@ -44,6 +44,7 @@ class Transpose
     "State/Province"            => "State",
     "Master"                    => "Master Category",
     "Types"                     => "Type",
+    "Editorial e-mail"          => "Editorial Email",
 
 =begin
     "Mailing ZIP Code"          => "Mailing ZIP",
@@ -81,7 +82,7 @@ class Transpose
 
     @field_index = {} # the accumulated final fields
     @null_type_warning = {} # track component db's with a null type field
-    @tpatch = @mcpatch = @cellmerge =
+    @tpatch = @mcpatch = @cellmerge = @trs = @htrs =
     @endash = @nonco = @irs = @ors = @nirs = @nors = 0 # (null) input and output records
 
     pass1 # dborig/*.csv -> db2/. Textual fixups, all files rewritten to db2
@@ -102,6 +103,7 @@ class Transpose
         File.open IDIR + file, WRITEMODE do |f2|
           # read CSV header
           f2.puts editheader f1.gets.gsub(' ,', ',')
+          @htrs += 1
           # this first scan is textual cleanup and not really CSV-aware
           while s = f1.gets
             @irs += 1
@@ -110,6 +112,9 @@ class Transpose
               @nirs += 1
             else
               f2.puts r
+              if r != s
+                @trs += 1
+              end
             end
           end
         end
@@ -172,6 +177,8 @@ class Transpose
     puts '%5d null input records' % @nirs
     puts '%5d null output records' % @nors
     puts '%5d output records' % @ors
+    puts '%5d header records edited' % @htrs
+    puts '%5d data records edited' % @trs
     puts '%5d fields' % @field_index.size
     puts '%5d harmonized phone numbers' % @harmonized_phones
     puts '%5d non-conforming numbers remain' % @nonco
