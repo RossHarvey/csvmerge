@@ -12,6 +12,9 @@ class Transpose
   SUBSET    = false
   EN_DASH   = 0x96
 
+# Renames work by preventing the old column from being created in
+# the first place. Entries may be many-to-one but not transitive.
+
   RENAME    = {
     'Mailing state'             => 'Mailing State',
     'Mailing state or province' => 'Mailing State',
@@ -309,7 +312,8 @@ class Transpose
       end
       dups[hcname] = i
     end
-    raise if havedups
+    raise if havedups # error out for dups in one file, dups between
+    #                   CSV files are expected
     # now, add to the master list if not already there
     # must be RENAME{}-concious
     fields.each do |hcname| # header column name
@@ -317,7 +321,7 @@ class Transpose
       if defined? FOCUS
         next unless FOCUS =~ hcname
       end
-      if hcname # ,, can produce a nil field
+      if hcname # Instances of ,, can produce a nil field
         s = RENAME[hcname] || hcname
         if !@field_index[s] && !GLOBAL_REMOVE[s]
           @field_index[s] = @field_index.size
