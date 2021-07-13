@@ -15,12 +15,18 @@ class Split
     puts 'Reading merged_db.csv...'
     table = CSV.read 'r/merged_db.csv', :headers=>true
     table.headers.each_with_index do |colname, i|
-      puts "Writing #{colname}"
-      File.open('cols/' + (table.headers[i].tr ' /', '_:'), 'w') do |f|
+      puts "Writing #{colname} index=#{i}"
+      ofn = 'cols/' + (table.headers[i].tr ' /', '_:')
+      if test 'e', ofn
+        puts; puts
+        puts "#{colname} already exists, probably a case-folding collision"
+        system "grep -i '#{colname}' r/headers"
+        puts; puts
+      end
+      File.open ofn, 'w' do |f|
         f.puts table.by_col[colname]
       end
     end
-      
   end
 
   self
