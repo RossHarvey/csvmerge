@@ -29,13 +29,24 @@ class Transpose
     'Mailing address 2'         => 'Mailing Address 2',
     'Mailing city'              => 'Mailing City',
     'Mailing postal code'       => 'Mailing Postal Code',
+    "Mailing Postal code"       => "Mailing Postal Code",
+    "Mailing zip"               => 'Mailing ZIP',
+    "Mailing ZIP Code"          => 'Mailing ZIP',
+    "Mailing Zip Code"          => 'Mailing ZIP',
+    "Mailing province"          => "Mailing Province",
+
+    "ZIP/Postal code"           => "ZIP/Postal Code",
+    "Postal code"               => "Postal Code",
+
     'Delivery methods'          => 'Delivery Methods',
     'Display Advertising e-mail'=> 'Display Adv. Email',
     'Display Adv. E-mail'       => 'Display Adv. Email',
     'General/National Adv. E-mail' =>
                                    'General/National Adv. Email',
     "Advertising phone"         => "Advertising Phone",
+    "Advertising fax"           => "Advertising Fax",
     "Editorial phone"           => "Editorial Phone",
+    "Editorial fax"             => "Editorial Fax",
     "Office phone"              => "Office Phone",
     "Other phone"               => "Other Phone",
     "Areas Served - City/County or Portion Thereof, or Zip codes" =>
@@ -49,7 +60,27 @@ class Transpose
     "Types"                     => "Type",
     "Editorial e-mail"          => "Editorial Email",
 
+    "Street address 1"          => "Street Address 1",
+    "Street address 2"          => "Street Address 2",
+    "General e-mail"            => "General Email",
+    "General E-mail"            => "General Email",
+    "Parent company"            => "Parent Company",
+    "Corporate/Parent Company"  => "Parent Company",
+    "Parent company (for newpapers)" =>
+                                   "Parent Company",
+    "Parent Company/Group    "  => "Parent Company",
+    "Main contact"              => "Main Contact",
+    "Year established"          => "Year Established",
+    "News services"             => "News Services",
+
+    "Advertising"               => "Advertising (Open inch rate) Weekday/Saturday",
+    "Advertising (Open Inch Rate) Weekday/Saturday" =>
+    "Advertising (Open inch rate) Weekday/Saturday",
+
+    "Mechanical specifications" => "Mechanical Specifications",
+
 =begin
+  TODO: map both zip and postal code keys together
     "Mailing ZIP Code"          => "Mailing ZIP",
     "Mailing ZIP/Postal"        => "Mailing ZIP",
     "Mailing Zip Code"          => "Mailing ZIP",
@@ -59,6 +90,7 @@ class Transpose
     "Zip/Postal code"           => "ZIP Code",
     "Zip Codes Served"          => "ZIP Codes Served",
 =end
+
   }
 
 # formerly in editheader
@@ -71,6 +103,8 @@ class Transpose
   GLOBAL_REMOVE = {
     "If other, please specify:" => true,
   }
+
+# GLOBAL_KEEP = "Advertising"
 
   CELL_UPDATES = [
     [ "Master Category",
@@ -154,6 +188,7 @@ class Transpose
             next unless key && value
             next if (defined? FOCUS) and not (FOCUS =~ key)
             next if GLOBAL_REMOVE[key]
+            next if (defined? GLOBAL_KEEP) && !(key.start_with? GLOBAL_KEEP)
             format_phone_field key, value
             @cellmerge += 1 if RENAME[key]
             mergedkey = RENAME[key] || key
@@ -166,7 +201,7 @@ class Transpose
           if newrecord.size == 0
             @nors += 1
           else
-            try_first_cols_fix file, row, newrecord
+            try_first_cols_fix file, row, newrecord unless defined? GLOBAL_KEEP
             mcsv << (SUBSET ? newrecord[0..2] + [file] : newrecord)
             @ors += 1
           end
@@ -303,6 +338,7 @@ class Transpose
     dups = {}; havedups = nil
     fields.each_with_index do |hcname, i|
       next if GLOBAL_REMOVE[hcname]
+      next if (defined? GLOBAL_KEEP) && !(hcname.start_with? GLOBAL_KEEP)
       # apply various sanity checks
       raise "column #{i} zero-length string" if hcname == ''
       raise "column #{i} nil" if hcname.nil?
@@ -323,8 +359,12 @@ class Transpose
       end
       if hcname # Instances of ,, can produce a nil field
         s = RENAME[hcname] || hcname
-        if !@field_index[s] && !GLOBAL_REMOVE[s]
-          @field_index[s] = @field_index.size
+        if !@field_index[s]
+          if !GLOBAL_REMOVE[s]
+            if !(defined? GLOBAL_KEEP) || (hcname.start_with? GLOBAL_KEEP)
+              @field_index[s] = @field_index.size
+            end
+          end
         end
       end
     end
