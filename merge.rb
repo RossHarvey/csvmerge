@@ -36,6 +36,8 @@ class Transpose
     "Mailing province"          => "Mailing Province",
 
     "ZIP/Postal code"           => "ZIP/Postal Code",
+    "Zip/Postal code"           => "ZIP/Postal Code",
+    "Zip/Postal Code"           => "ZIP/Postal Code",
     "Postal code"               => "Postal Code",
 
     'Delivery methods'          => 'Delivery Methods',
